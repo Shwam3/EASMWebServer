@@ -1,7 +1,7 @@
-package com.shwam.easm.webserver.stomp;
+package shwam.easm.webserver.stomp;
 
-import com.shwam.easm.webserver.WebServer;
-import com.shwam.easm.webserver.stomp.handlers.TDHandler;
+import shwam.easm.webserver.WebServer;
+import shwam.easm.webserver.stomp.handlers.TDHandler;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;

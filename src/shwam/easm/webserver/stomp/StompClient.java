@@ -1,4 +1,4 @@
-package com.shwam.easm.webserver.stomp;
+package shwam.easm.webserver.stomp;
 
 import java.io.IOException;
 import java.io.InputStream;

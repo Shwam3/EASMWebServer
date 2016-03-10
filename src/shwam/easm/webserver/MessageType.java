@@ -1,4 +1,4 @@
-package com.shwam.easm.webserver;
+package shwam.easm.webserver;
 
 public enum MessageType
 {

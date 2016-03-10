@@ -1,4 +1,4 @@
-package com.shwam.easm.webserver;
+package shwam.easm.webserver;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
@@ -46,7 +46,7 @@ public class DataGui extends JFrame
         setLocationRelativeTo(null);
         setDefaultCloseOperation(WindowConstants.HIDE_ON_CLOSE);
 
-        try { setIconImage(ImageIO.read(SysTrayHandler.class.getResource("/com/shwam/easm/webserver/resources/Icon.png"))); }
+        try { setIconImage(ImageIO.read(SysTrayHandler.class.getResource("/shwam/easm/webserver/resources/Icon.png"))); }
         catch (IOException e) { e.printStackTrace(); }
 
         JPanel mainPanel = new JPanel(new BorderLayout());

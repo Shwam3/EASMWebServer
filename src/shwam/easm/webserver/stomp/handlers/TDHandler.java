@@ -1,18 +1,18 @@
-package com.shwam.easm.webserver.stomp.handlers;
+package shwam.easm.webserver.stomp.handlers;
 
-import com.shwam.easm.webserver.MessageType;
-import com.shwam.easm.webserver.WebServer;
-import com.shwam.easm.webserver.stomp.StompConnectionHandler;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import jsonparser.JSONParser;
 import net.ser1.stomp.Listener;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import shwam.easm.webserver.MessageType;
+import shwam.easm.webserver.WebServer;
+import shwam.easm.webserver.stomp.StompConnectionHandler;
 
 public class TDHandler implements Listener
 {
@@ -33,9 +33,11 @@ public class TDHandler implements Listener
 
             try
             {
-                Map<String, Object> json = (Map<String, Object>) JSONParser.parseJSON(jsonString).get("TDData");
-
-                json.entrySet().stream().filter(p -> p.getKey().length() == 6).forEach(p -> WebServer.TDData.put(p.getKey(), (String) p.getValue()));
+                JSONObject json = new JSONObject(jsonString).getJSONObject("TDData");
+                
+                for (String key : json.keySet())
+                    if (key.length() == 6)
+                        WebServer.TDData.put(key, json.getString(key));
 
                 if (WebServer.TDData.size() > 0)
                     WebServer.printOut("[TD] Initialised Data");
@@ -75,43 +77,43 @@ public class TDHandler implements Listener
         StompConnectionHandler.printStompHeaders(headers);
 
         //<editor-fold defaultstate="collapsed" desc="TD Data">
-        List<Map<String, Map<String, String>>> messageList = (List<Map<String, Map<String, String>>>) JSONParser.parseJSON("{\"TDMessage\":" + body + "}").get("TDMessage");
+        JSONArray messageList = new JSONArray(body);
 
         Map<String, String> updateMap = new HashMap<>();
 
-        for (Map<String, Map<String, String>> map : messageList)
+        for (int j = 0; j < messageList.length(); j++)
         {
+            JSONObject obj = messageList.getJSONObject(j);
             try
             {
-                String msgType = map.keySet().toArray(new String[0])[0];
-                Map<String, String> indvMsg = map.get(msgType);
+                String msgType = obj.keySet().toArray(new String[0])[0];
+                JSONObject indvMsg = obj.getJSONObject(msgType);
 
-                indvMsg.put("address", indvMsg.get("area_id") + indvMsg.get("address"));
+                indvMsg.put("address", indvMsg.getString("area_id") + indvMsg.optString("address"));
 
                 switch (msgType.toUpperCase())
                 {
                     case "CA_MSG":
-                        updateMap.put(indvMsg.get("area_id") + indvMsg.get("from"), "");
-                        updateMap.put(indvMsg.get("area_id") + indvMsg.get("to"), indvMsg.get("descr"));
+                        updateMap.put(indvMsg.getString("area_id") + indvMsg.getString("from"), "");
+                        updateMap.put(indvMsg.getString("area_id") + indvMsg.getString("to"), indvMsg.getString("descr"));
                         break;
                     case "CB_MSG":
-                        updateMap.put(indvMsg.get("area_id") + indvMsg.get("from"), "");
+                        updateMap.put(indvMsg.getString("area_id") + indvMsg.getString("from"), "");
                         break;
                     case "CC_MSG":
-                        updateMap.put(indvMsg.get("area_id") + indvMsg.get("to"), indvMsg.get("descr"));
+                        updateMap.put(indvMsg.getString("area_id") + indvMsg.getString("to"), indvMsg.getString("descr"));
                         break;
 
                     case "SF_MSG":
                     {
-                        char[] data = toBinaryString(Integer.parseInt(indvMsg.get("data"), 16)).toCharArray();
+                        char[] data = toBinaryString(Integer.parseInt(indvMsg.getString("data"), 16)).toCharArray();
 
                         for (int i = 0; i < data.length; i++)
                         {
                             String changedBit = Integer.toString(8 - i);
                             String address = indvMsg.get("address") + ":" + changedBit;
 
-                            if (!WebServer.TDData.containsKey(address)) //|| !WebServer.TDData.get(address).equals(String.valueOf(data[i])))
-                                updateMap.put(address, String.valueOf(data[i]));
+                            updateMap.put(address, String.valueOf(data[i]));
                         }
                         break;
                     }
@@ -119,15 +121,15 @@ public class TDHandler implements Listener
                     case "SG_MSG":
                     case "SH_MSG":
                     {
-                        String addrStart = indvMsg.get("address").substring(0, 3);
-                        String addrEnd = indvMsg.get("address").substring(3);
+                        String addrStart = indvMsg.getString("address").substring(0, 3);
+                        String addrEnd = indvMsg.getString("address").substring(3);
 
-                        int data[] = { Integer.parseInt(indvMsg.get("data").substring(0, 2), 16),
-                            Integer.parseInt(indvMsg.get("data").substring(2, 4), 16),
-                            Integer.parseInt(indvMsg.get("data").substring(4, 6), 16),
-                            Integer.parseInt(indvMsg.get("data").substring(6, 8), 16) };
+                        int data[] = { Integer.parseInt(indvMsg.getString("data").substring(0, 2), 16),
+                            Integer.parseInt(indvMsg.getString("data").substring(2, 4), 16),
+                            Integer.parseInt(indvMsg.getString("data").substring(4, 6), 16),
+                            Integer.parseInt(indvMsg.getString("data").substring(6, 8), 16) };
 
-                        String[] addresses = {indvMsg.get("address"),
+                        String[] addresses = {indvMsg.getString("address"),
                             addrStart + (addrEnd.equals("0") ? "1" : addrEnd.equals("4") ? "5" : addrEnd.equals("8") ? "9" : "D"),
                             addrStart + (addrEnd.equals("0") ? "2" : addrEnd.equals("4") ? "6" : addrEnd.equals("8") ? "A" : "E"),
                             addrStart + (addrEnd.equals("0") ? "3" : addrEnd.equals("4") ? "7" : addrEnd.equals("8") ? "B" : "F")};
@@ -146,19 +148,29 @@ public class TDHandler implements Listener
         WebServer.guiData.updateData();
         //</editor-fold>
 
-        StringBuilder sb = new StringBuilder("{\"Message\":{");
-        sb.append("\"type\":\"").append(MessageType.SEND_UPDATE.getName()).append("\",");
-        sb.append("\"message\":{");
+        JSONObject container = new JSONObject();
+        JSONObject message = new JSONObject();
+        message.put("type", MessageType.SEND_UPDATE.getName());
+        message.put("timestamp", System.currentTimeMillis());
+        message.put("message", updateMap);
+        container.put("Message", message);
+        
+        String msgString = container.toString();
+        Collections.unmodifiableCollection(WebServer.webSocket.connections()).stream().forEach(c -> c.send(msgString));
+        
+        //StringBuilder sb = new StringBuilder("{\"Message\":{");
+        //sb.append("\"type\":\"").append(MessageType.SEND_UPDATE.getName()).append("\",");
+        //sb.append("\"message\":{");
 
-        updateMap.entrySet().stream()
-                .forEach(p -> sb.append("\"").append(p.getKey()).append("\":\"").append(p.getValue()).append("\","));
+        //updateMap.entrySet().stream()
+        //        .forEach(p -> sb.append("\"").append(p.getKey()).append("\":\"").append(p.getValue()).append("\","));
 
-        if (sb.charAt(sb.length()-1) == ',')
-            sb.deleteCharAt(sb.length()-1);
-        sb.append("}}}");
+        //if (sb.charAt(sb.length()-1) == ',')
+        //    sb.deleteCharAt(sb.length()-1);
+        //sb.append("}}}");
 
-        Collections.unmodifiableCollection(WebServer.webSocket.connections()).stream().forEach(c -> c.send(sb.toString()));
-
+        //Collections.unmodifiableCollection(WebServer.webSocket.connections()).stream().forEach(c -> c.send(sb.toString()));
+        
         StompConnectionHandler.lastMessageTimeGeneral = System.currentTimeMillis();
         StompConnectionHandler.ack(headers.get("ack"));
     }

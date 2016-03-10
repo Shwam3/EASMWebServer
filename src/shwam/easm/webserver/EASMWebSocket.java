@@ -1,4 +1,4 @@
-package com.shwam.easm.webserver;
+package shwam.easm.webserver;
 
 import java.net.InetSocketAddress;
 import org.java_websocket.WebSocket;

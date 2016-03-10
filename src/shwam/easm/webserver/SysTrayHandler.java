@@ -1,7 +1,8 @@
-package com.shwam.easm.webserver;
+package shwam.easm.webserver;
 
-import com.shwam.easm.webserver.stomp.StompConnectionHandler;
 import java.awt.AWTException;
+import java.awt.Desktop;
+import java.awt.Menu;
 import java.awt.MenuItem;
 import java.awt.PopupMenu;
 import java.awt.SystemTray;
@@ -11,10 +12,13 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import javax.imageio.ImageIO;
 import javax.swing.JOptionPane;
+import org.java_websocket.WebSocket;
+import shwam.easm.webserver.stomp.StompConnectionHandler;
 
 public class SysTrayHandler
 {
@@ -29,6 +33,9 @@ public class SysTrayHandler
             final MenuItem status = new MenuItem("Status");
             final MenuItem data = new MenuItem("View Data");
             final MenuItem motd = new MenuItem("Edit MOTD");
+            final Menu     logs = new Menu("Logs");
+            final MenuItem logsFile = new Menu("Open Todays log");
+            final MenuItem logsFolder = new Menu("Open log folder");
             final MenuItem reconnect = new MenuItem("Reconnect");
 
             ActionListener menuListener = evt ->
@@ -43,9 +50,16 @@ public class SysTrayHandler
                 }
                 else if (src == status)
                 {
-                    StringBuilder statusMsg = new StringBuilder("Connections: (" + WebServer.webSocket.connections().size() + ")");
-                    Collections.unmodifiableCollection(WebServer.webSocket.connections()).stream()
-                            .forEachOrdered(c -> statusMsg.append("\n").append(c.getRemoteSocketAddress().getAddress().getHostAddress()).append(":").append(c.getRemoteSocketAddress().getPort()));
+                    Collection<WebSocket> conns = Collections.unmodifiableCollection(WebServer.webSocket.connections());
+                    StringBuilder statusMsg = new StringBuilder();
+                    statusMsg.append("WebSocket:");
+                    statusMsg.append("\n  Connections: ").append(conns.size());
+                    conns.stream().forEachOrdered(c -> statusMsg.append("\n    ").append(c.getRemoteSocketAddress().getAddress().getHostAddress()).append(":").append(c.getRemoteSocketAddress().getPort()));
+                    statusMsg.append("\nStomp:");
+                    statusMsg.append("\n  Connected: ").append(StompConnectionHandler.isConnected() && !StompConnectionHandler.isClosed() ? "Yes" : "No");
+                    statusMsg.append("\n  Timeout: ").append((System.currentTimeMillis() - StompConnectionHandler.lastMessageTimeGeneral)/1000f).append("s");
+
+                    WebServer.printOut(statusMsg.toString().replace("\n", "\n[Status]"));
 
                     JOptionPane.showMessageDialog(null, statusMsg.toString());
                 }
@@ -90,6 +104,16 @@ public class SysTrayHandler
 
                     Collections.unmodifiableCollection(WebServer.webSocket.connections()).stream().forEach(c -> c.send(update));
                 }
+                else if (src == logsFile)
+                {
+                    try { Desktop.getDesktop().open(WebServer.logFile); }
+                    catch (IOException e) {}
+                }
+                else if (src == logsFolder)
+                {
+                    try { Runtime.getRuntime().exec("explorer.exe /select," + WebServer.logFile); }
+                    catch (IOException e) {}
+                }
                 else if (src == reconnect)
                 {
                     StompConnectionHandler.disconnect();
@@ -101,18 +125,24 @@ public class SysTrayHandler
             data.addActionListener(menuListener);
             motd.addActionListener(menuListener);
             reconnect.addActionListener(menuListener);
+            logsFile.addActionListener(menuListener);
+            logsFolder.addActionListener(menuListener);
             exit.addActionListener(menuListener);
+
+            logs.add(logsFile);
+            logs.add(logsFolder);
 
             pm.add(status);
             pm.add(data);
             pm.add(motd);
             pm.add(reconnect);
+            pm.add(logs);
             pm.addSeparator();
             pm.add(exit);
 
             try
             {
-                trayIcon = new TrayIcon(ImageIO.read(SysTrayHandler.class.getResource("/com/shwam/easm/webserver/resources/Icon.png")));
+                trayIcon = new TrayIcon(ImageIO.read(SysTrayHandler.class.getResource("/shwam/easm/webserver/resources/Icon.png")));
                 trayIcon.setToolTip("EASM Web Server (v" + WebServer.VERSION + ")");
                 trayIcon.setImageAutoSize(true);
                 trayIcon.setPopupMenu(pm);
