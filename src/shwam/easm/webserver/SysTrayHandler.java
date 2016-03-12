@@ -34,8 +34,8 @@ public class SysTrayHandler
             final MenuItem data = new MenuItem("View Data");
             final MenuItem motd = new MenuItem("Edit MOTD");
             final Menu     logs = new Menu("Logs");
-            final MenuItem logsFile = new Menu("Open Todays log");
-            final MenuItem logsFolder = new Menu("Open log folder");
+            final MenuItem logsFile = new MenuItem("Open Todays log");
+            final MenuItem logsFolder = new MenuItem("Open log folder");
             final MenuItem reconnect = new MenuItem("Reconnect");
 
             ActionListener menuListener = evt ->
