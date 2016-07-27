@@ -1,7 +1,5 @@
 package shwam.easm.webserver.stomp;
 
-import shwam.easm.webserver.WebServer;
-import shwam.easm.webserver.stomp.handlers.TDHandler;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -16,6 +14,8 @@ import java.util.concurrent.TimeUnit;
 import javax.security.auth.login.LoginException;
 import net.ser1.stomp.Listener;
 import net.ser1.stomp.Version;
+import shwam.easm.webserver.WebServer;
+import shwam.easm.webserver.stomp.handlers.TDHandler;
 
 public class StompConnectionHandler
 {
@@ -85,7 +85,7 @@ public class StompConnectionHandler
                 printStomp(body.trim().replace("\n", "\n[Stomp]"), true);
         });
 
-        client.subscribe("/topic/TD_ANG_SIG_AREA", "TD", handlerTD);
+        client.subscribe("/topic/TD_ALL_SIG_AREA", "TD", handlerTD);
 
         try { Thread.sleep(100); }
         catch (InterruptedException e) {}

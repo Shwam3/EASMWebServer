@@ -1,6 +1,8 @@
 package shwam.easm.webserver;
 
 import java.net.InetSocketAddress;
+import java.util.Collection;
+import java.util.Collections;
 import org.java_websocket.WebSocket;
 import org.java_websocket.framing.CloseFrame;
 import org.java_websocket.handshake.ClientHandshake;
@@ -56,6 +58,12 @@ public class EASMWebSocket extends WebSocketServer
             conn.close(CloseFrame.ABNORMAL_CLOSE, ex.getMessage());
         }
         WebServer.printThrowable(ex, "WebSocket" + (conn != null ? "-" + conn.getRemoteSocketAddress().getAddress().getHostAddress() : ""));
+    }
+    
+    @Override
+    public Collection<WebSocket> connections()
+    {
+        return Collections.unmodifiableCollection(super.connections());
     }
 
     public static void printWebSocket(String message, boolean toErr)

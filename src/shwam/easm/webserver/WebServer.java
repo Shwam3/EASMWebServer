@@ -8,7 +8,6 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.reflect.InvocationTargetException;
 import java.text.SimpleDateFormat;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -16,7 +15,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
-import org.java_websocket.server.WebSocketServer;
+import org.json.JSONObject;
 import shwam.easm.webserver.stomp.StompConnectionHandler;
 
 public class WebServer
@@ -25,10 +24,10 @@ public class WebServer
 
     public static final File storageDir = new File(System.getProperty("user.home", "C:") + File.separator + ".easigmap");
 
-    public  static final int    port = 6322;
-    public  static WebSocketServer webSocket;
-    public  static DataGui      guiData;
-    public  static boolean      stop = true;
+    public  static final int     port = 6322;
+    public  static EASMWebSocket webSocket;
+    public  static DataGui       guiData;
+    public  static boolean       stop = true;
 
     public static SimpleDateFormat sdfTime          = new SimpleDateFormat("HH:mm:ss");
     public static SimpleDateFormat sdfDate          = new SimpleDateFormat("dd/MM/yy");
@@ -75,24 +74,18 @@ public class WebServer
             {
                 try
                 {
-                    Map<String, Object> Message = new HashMap<>();
-                    Map<String, Object> content = new HashMap<>();
-                    content.put("type", MessageType.SEND_UPDATE.getName());
+                    JSONObject message = new JSONObject();
+                    JSONObject content = new JSONObject();
+                    content.put("type", "SEND_ALL");
                     content.put("timestamp", Long.toString(System.currentTimeMillis()));
-                    Message.put("Message", content);
-                    StringBuilder sb = new StringBuilder("{\"Message\":{");
-                    sb.append("\"type\":\"").append(MessageType.SEND_UPDATE.getName()).append("\",");
-                    sb.append("\"timestamp\":").append(System.currentTimeMillis()).append(",");
-                    sb.append("\"message\":{");
+                    content.put("message", new HashMap<>(TDData));
+                    message.put("Message", content);
+                    String messageStr = message.toString();
 
-                    TDData.entrySet().stream()
-                            .forEach(p -> sb.append("\"").append(p.getKey()).append("\":\"").append(p.getValue()).append("\","));
-
-                    if (sb.charAt(sb.length()-1) == ',')
-                        sb.deleteCharAt(sb.length()-1);
-                    sb.append("}}}");
-
-                    Collections.unmodifiableCollection(webSocket.connections()).stream().forEach(c -> c.send(sb.toString()));
+                    webSocket.connections().stream()
+                        .filter(c -> c != null)
+                        .filter(c -> c.isOpen())
+                        .forEach(c -> c.send(messageStr));
                     printOut("[WebSocket] Updated all clients");
                 }
                 catch (Exception e) { printThrowable(e, "SendAll"); }

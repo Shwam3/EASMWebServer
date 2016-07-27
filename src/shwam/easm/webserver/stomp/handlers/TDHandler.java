@@ -4,11 +4,14 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import net.ser1.stomp.Listener;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 import shwam.easm.webserver.MessageType;
 import shwam.easm.webserver.WebServer;
@@ -16,6 +19,12 @@ import shwam.easm.webserver.stomp.StompConnectionHandler;
 
 public class TDHandler implements Listener
 {
+    private final static List<String> areaFilters;
+    static
+    {
+        areaFilters = Collections.unmodifiableList(Arrays.asList("AW","CA","CC","EN","K2","KX","LS","PB","SE","SI","SO","SX","UR","U2","U3","WG"));
+    }
+    
     private static Listener instance = null;
     private TDHandler()
     {
@@ -42,7 +51,7 @@ public class TDHandler implements Listener
                 if (WebServer.TDData.size() > 0)
                     WebServer.printOut("[TD] Initialised Data");
             }
-            catch (IllegalArgumentException e) { WebServer.printThrowable(e, "TD"); }
+            catch (JSONException e) { WebServer.printThrowable(e, "TD"); }
         }
 
         File MOTDFile = new File(WebServer.storageDir, "MOTD.txt");
@@ -88,6 +97,9 @@ public class TDHandler implements Listener
             {
                 String msgType = obj.keySet().toArray(new String[0])[0];
                 JSONObject indvMsg = obj.getJSONObject(msgType);
+                
+                if (!areaFilters.contains(indvMsg.getString("area_id")))
+                    continue;
 
                 indvMsg.put("address", indvMsg.getString("area_id") + indvMsg.optString("address"));
 
@@ -124,15 +136,19 @@ public class TDHandler implements Listener
                         String addrStart = indvMsg.getString("address").substring(0, 3);
                         String addrEnd = indvMsg.getString("address").substring(3);
 
-                        int data[] = { Integer.parseInt(indvMsg.getString("data").substring(0, 2), 16),
+                        int data[] = {
+                            Integer.parseInt(indvMsg.getString("data").substring(0, 2), 16),
                             Integer.parseInt(indvMsg.getString("data").substring(2, 4), 16),
                             Integer.parseInt(indvMsg.getString("data").substring(4, 6), 16),
-                            Integer.parseInt(indvMsg.getString("data").substring(6, 8), 16) };
+                            Integer.parseInt(indvMsg.getString("data").substring(6, 8), 16)
+                        };
 
-                        String[] addresses = {indvMsg.getString("address"),
+                        String[] addresses = {
+                            indvMsg.getString("address"),
                             addrStart + (addrEnd.equals("0") ? "1" : addrEnd.equals("4") ? "5" : addrEnd.equals("8") ? "9" : "D"),
                             addrStart + (addrEnd.equals("0") ? "2" : addrEnd.equals("4") ? "6" : addrEnd.equals("8") ? "A" : "E"),
-                            addrStart + (addrEnd.equals("0") ? "3" : addrEnd.equals("4") ? "7" : addrEnd.equals("8") ? "B" : "F")};
+                            addrStart + (addrEnd.equals("0") ? "3" : addrEnd.equals("4") ? "7" : addrEnd.equals("8") ? "B" : "F")
+                        };
 
                         for (int i = 0; i < data.length; i++)
                             updateMap.put(addresses[i], Integer.toString(data[i]));
@@ -155,21 +171,11 @@ public class TDHandler implements Listener
         message.put("message", updateMap);
         container.put("Message", message);
         
-        String msgString = container.toString();
-        Collections.unmodifiableCollection(WebServer.webSocket.connections()).stream().forEach(c -> c.send(msgString));
-        
-        //StringBuilder sb = new StringBuilder("{\"Message\":{");
-        //sb.append("\"type\":\"").append(MessageType.SEND_UPDATE.getName()).append("\",");
-        //sb.append("\"message\":{");
-
-        //updateMap.entrySet().stream()
-        //        .forEach(p -> sb.append("\"").append(p.getKey()).append("\":\"").append(p.getValue()).append("\","));
-
-        //if (sb.charAt(sb.length()-1) == ',')
-        //    sb.deleteCharAt(sb.length()-1);
-        //sb.append("}}}");
-
-        //Collections.unmodifiableCollection(WebServer.webSocket.connections()).stream().forEach(c -> c.send(sb.toString()));
+        String messageStr = container.toString();
+        WebServer.webSocket.connections().stream()
+                .filter(c -> c != null)
+                .filter(c -> c.isOpen())
+                .forEach(c -> c.send(messageStr));
         
         StompConnectionHandler.lastMessageTimeGeneral = System.currentTimeMillis();
         StompConnectionHandler.ack(headers.get("ack"));
